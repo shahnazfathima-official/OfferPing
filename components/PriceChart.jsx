@@ -75,7 +75,7 @@ export default function PriceChart({ productId }) {
             dot={{ fill: "#FA5D19", r: 4 }}
             activeDot={{ r: 6 }}
           />
-          {/* #FE676E */}
+          
         </LineChart>
       </ResponsiveContainer>
     </div>
