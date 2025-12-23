@@ -128,19 +128,21 @@ export async function getProducts() {
 export async function getPriceHistory(productId) {
   try {
     const supabase = await createClient();
+
     const { data, error } = await supabase
       .from("price_history")
-      .select("*")
+      .select("id, product_id, price, currency, checked_at") // ✅ explicit
       .eq("product_id", productId)
-      .order("checked_at", { ascending: true });
+      .order("checked_at", { ascending: true }); // ✅ NOT created_at
 
     if (error) throw error;
-    return data || [];
+    return data ?? [];
   } catch (error) {
     console.error("Get price history error:", error);
     return [];
   }
 }
+
 
 export async function signOut() {
   const supabase = await createClient();
