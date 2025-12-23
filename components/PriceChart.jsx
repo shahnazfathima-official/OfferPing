@@ -70,11 +70,12 @@ export default function PriceChart({ productId }) {
           <Line
             type="monotone"
             dataKey="price"
-            stroke="#FA5D19"
+            stroke="#C73866"
             strokeWidth={2}
             dot={{ fill: "#FA5D19", r: 4 }}
             activeDot={{ r: 6 }}
           />
+          {/* #FE676E */}
         </LineChart>
       </ResponsiveContainer>
     </div>

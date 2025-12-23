@@ -3,6 +3,7 @@ import { deleteProduct } from "@/app/actions";
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { toast } from "sonner";
 import {
   Card,
   CardContent,
@@ -35,8 +36,8 @@ const ProductCard = ({ product }) => {
     setDeleting(false);
   };
   return (
-    <Card className="w-full max-w-sm hover:shadow-lg transition-shadow">
-      <CardHeader className={"pb-3"}>
+    <Card className="  hover:shadow-lg transition-shadow">
+      <CardHeader className="pb-3 ">
         <div className="flex gap-4">
           {product.image_url && (
             <img
@@ -101,8 +102,8 @@ const ProductCard = ({ product }) => {
       </CardContent>
       {showChart && (
         <CardFooter className="flex-col gap-2">
-        <PriceChart productId={product.id}/>
-      </CardFooter>
+          <PriceChart productId={product.id} />
+        </CardFooter>
       )}
     </Card>
   );

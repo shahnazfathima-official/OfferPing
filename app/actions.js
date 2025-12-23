@@ -4,7 +4,6 @@ import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-
 export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
@@ -96,37 +95,44 @@ export async function deleteProduct(productId) {
   }
 }
 
-export async function getProducts(){
-    try {
-        const supabase= await createClient();
-        const {data,error}= await supabase
-        .from("products")
-        .select("*")
-        .order("created_at",{ascending:false});
+export async function getProducts() {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-        if(error) throw error;
-        return data|| [];
-    } catch (error) {
-        console.error("Get products error:", error);
-        return [];
-        
+    if (!user) {
+      return [];
     }
+
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error("Get products error:", error);
+    return [];
+  }
 }
 
-export async function getPriceHistory(productId){
-    try {
-        const supabase= await createClient();
-        const {data,error}= await supabase
-        .from("price_history")
-        .select("*")
-        .eq("product_id",productId)
-        .order("created_at",{ascending:true});
+export async function getPriceHistory(productId) {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("price_history")
+      .select("*")
+      .eq("product_id", productId)
+      .order("checked_at", { ascending: true });
 
-        if(error) throw error;
-        return data|| [];
-    } catch (error) {
-        console.error("Get price history error:", error);
-        return [];
-        
-    }
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error("Get price history error:", error);
+    return [];
+  }
 }
