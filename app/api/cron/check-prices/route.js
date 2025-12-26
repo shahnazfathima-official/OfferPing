@@ -48,7 +48,7 @@ export async function POST(request) {
           productData.currentPrice.replace(/[^\d.]/g, "")
         );
 
-        const oldPrice = Number(product.currentPrice.replace(/[^\d.]/g, ""));
+        const oldPrice = parseFloat(product.current_price);
 
         await supabase
           .from("products")
