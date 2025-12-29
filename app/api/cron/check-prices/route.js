@@ -34,11 +34,26 @@ export async function POST(request) {
       alertsSent: 0,
     };
 
+    const debugInfo = [];
+
     for (const product of products) {
       try {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/1a998204-ec27-4d8f-b73e-fc9e0bf28785',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'route.js:37',message:'Processing product',data:{productId:product.id,url:product.url,currentPrice:product.current_price},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
+        debugInfo.push({ step: 'start', productId: product.id, url: product.url, oldPrice: product.current_price });
+        
         const productData = await scrapeProduct(product.url);
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/1a998204-ec27-4d8f-b73e-fc9e0bf28785',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'route.js:40',message:'Scrape completed',data:{productId:product.id,productData:productData,hasCurrentPrice:!!productData?.currentPrice},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
+        debugInfo.push({ step: 'scrape_complete', productId: product.id, productData: productData, hasCurrentPrice: !!productData?.currentPrice });
 
         if (!productData.currentPrice) {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/1a998204-ec27-4d8f-b73e-fc9e0bf28785',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'route.js:44',message:'Missing currentPrice - marking as failed',data:{productId:product.id,productData:productData},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+          // #endregion
+          debugInfo.push({ step: 'missing_price', productId: product.id, reason: 'No currentPrice in scraped data', productData: productData });
           results.failed++;
           continue;
         }
@@ -47,8 +62,16 @@ export async function POST(request) {
         const newPrice = Number(
           productData.currentPrice.replace(/[^\d.]/g, "")
         );
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/1a998204-ec27-4d8f-b73e-fc9e0bf28785',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'route.js:51',message:'Price parsed',data:{productId:product.id,rawPrice:productData.currentPrice,parsedNewPrice:newPrice,isNaN:isNaN(newPrice)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion
+        debugInfo.push({ step: 'price_parsed', productId: product.id, rawPrice: productData.currentPrice, parsedNewPrice: newPrice, isNaN: isNaN(newPrice) });
 
         const oldPrice = parseFloat(product.current_price);
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/1a998204-ec27-4d8f-b73e-fc9e0bf28785',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'route.js:54',message:'Price comparison values',data:{productId:product.id,oldPrice:oldPrice,newPrice:newPrice,priceEqual:oldPrice===newPrice,priceDropped:newPrice<oldPrice},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+        // #endregion
+        debugInfo.push({ step: 'price_comparison', productId: product.id, oldPrice: oldPrice, newPrice: newPrice, priceEqual: oldPrice === newPrice, priceDropped: newPrice < oldPrice });
 
         await supabase
           .from("products")
@@ -74,6 +97,10 @@ export async function POST(request) {
             const {
               data: { user },
             } = await supabase.auth.admin.getUserById(product.user_id);
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/1a998204-ec27-4d8f-b73e-fc9e0bf28785',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'route.js:76',message:'Price drop detected - checking user',data:{productId:product.id,userId:product.user_id,hasUser:!!user,hasEmail:!!user?.email},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+            // #endregion
+            debugInfo.push({ step: 'price_drop_detected', productId: product.id, userId: product.user_id, hasUser: !!user, hasEmail: !!user?.email });
 
             if (user?.email) {
               const emailResult = await sendPriceDropAlert(
@@ -82,17 +109,28 @@ export async function POST(request) {
                 oldPrice,
                 newPrice
               );
+              // #region agent log
+              fetch('http://127.0.0.1:7242/ingest/1a998204-ec27-4d8f-b73e-fc9e0bf28785',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'route.js:85',message:'Email send result',data:{productId:product.id,emailResult:emailResult,success:emailResult?.success},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+              // #endregion
+              debugInfo.push({ step: 'email_sent', productId: product.id, emailResult: emailResult, success: emailResult?.success });
 
               if (emailResult.success) {
                 results.alertsSent++;
               }
+            } else {
+              debugInfo.push({ step: 'email_skipped', productId: product.id, reason: 'No user email found', hasUser: !!user });
             }
           }
         }
 
         results.updated++;
+        debugInfo.push({ step: 'completed', productId: product.id });
       } catch (error) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/1a998204-ec27-4d8f-b73e-fc9e0bf28785',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'route.js:98',message:'Error processing product',data:{productId:product?.id,error:error?.message,errorStack:error?.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
         console.error(`Error processing product ${product.id}:`, error);
+        debugInfo.push({ step: 'error', productId: product?.id, error: error?.message, errorStack: error?.stack?.split('\n').slice(0, 3) });
         results.failed++;
       }
     }
@@ -101,6 +139,7 @@ export async function POST(request) {
       success: true,
       message: "Price check completed",
       results,
+      debug: debugInfo,
     });
   } catch (error) {
     console.error("Cron job error:", error);
